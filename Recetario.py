@@ -7,7 +7,8 @@ import json
 from tkinter import messagebox
 from tkinter import filedialog
 from PIL import Image, ImageTk
-
+from tkcalendar import DateEntry
+from datetime import datetime
 
 class App(ttk.Frame):
     def __init__(self, parent):
@@ -156,16 +157,34 @@ class Editar(ttk.Frame):
         ttk.Entry(self, textvariable=self.tiempo_coccion_var).grid(row=2, column=1, pady=5, padx=5)
         
         ttk.Label(self, text="Fecha de creación:").grid(row=3, column=0, sticky='w')
-        self.fecha_creacion_var = tk.StringVar(value=self.values['fecha_creacion'])
-        ttk.Entry(self, textvariable=self.fecha_creacion_var).grid(row=3, column=1, pady=5, padx=5)
+        fecha_creacion_str = self.values['fecha_creacion'] # Suponiendo que el valor se almacena como una cadena
+        fecha_creacion_dt = datetime.strptime(fecha_creacion_str, "%d/%m/%Y") # Convertir a objeto de fecha
+        self.fecha_creacion = tk.StringVar()
+        date_entry = DateEntry(self, textvariable=self.fecha_creacion, date_pattern="dd/MM/yyyy")
+        date_entry.grid(row=3, column=1)
+        self.fecha_creacion.set(fecha_creacion_str)
+        #self.fecha_creacion = tk.StringVar(value=fecha_creacion_str) # Establecer como valor inicial de la variable de texto
+        #DateEntry(self, textvariable=self.fecha_creacion, date_pattern="dd/MM/yyyy").grid(row=3, column=1)
+        
+        #self.fecha_creacion_var = tk.StringVar(value=self.values['fecha_creacion'])
+        #ttk.Entry(self, textvariable=self.fecha_creacion_var).grid(row=3, column=1, pady=5, padx=5)
         
         self.preparacion_text = tk.Text(self, height=10, width=50)
-        self.preparacion_text.insert('1.0', self.values['pasos'])
+        pasos_str = ""
+        for i, paso in enumerate(self.values['pasos'], 1):
+            pasos_str += f"{paso}"
+        self.preparacion_text.insert('1.0', pasos_str)
         self.preparacion_text.grid(row=4, column=1)
         ttk.Label(self, text="Preparación:").grid(row=4, column=0, sticky='w')
         
-        ttk.Label(self, text="Imagen:").grid(row=5, column=0, sticky='w')
-        ttk.Button(self, text="Seleccionar imagen", command=self.cargar_imagen).grid(row=5, column=1)
+        self.ingredientes_text = tk.Text(self, height=10, width=50)
+        ingredientes_str = ", ".join(self.values['ingredientes'])
+        self.ingredientes_text.insert('1.0', ingredientes_str)
+        self.ingredientes_text.grid(row=5, column=1)
+        ttk.Label(self, text="Ingredientes:").grid(row=5, column=0, sticky='w')
+        
+        ttk.Label(self, text="Imagen:").grid(row=6, column=0, sticky='w')
+        ttk.Button(self, text="Seleccionar imagen", command=self.cargar_imagen).grid(row=6, column=1)
         
         self.image_label = ttk.Label(self)
         self.image_label.grid(row=5, column=5, padx=150, pady=10, sticky='ne')
@@ -188,7 +207,7 @@ class Editar(ttk.Frame):
         # self.image_label.configure(image=photo)
         # self.image_label.image = photo
 
-        ttk.Button(self, text="Guardar cambios", command=self.guardar_cambios).grid(row=6, column=0, columnspan=2, pady=10)
+        ttk.Button(self, text="Guardar cambios", command=self.guardar_cambios).grid(row=7, column=0, columnspan=2, pady=10)
 
     def cargar_imagen(self):
         filepath = filedialog.askopenfilename(
@@ -209,10 +228,10 @@ class Editar(ttk.Frame):
         nombre = self.nombre_var.get()
         tiempo_preparacion = self.tiempo_preparacion_var.get()
         tiempo_coccion = self.tiempo_coccion_var.get()
-        fecha_creacion  = self.fecha_creacion_var.get()
+        fecha_creacion  = self.fecha_creacion.get()
         preparacion = self.preparacion_text.get('1.0', 'end-1c')
-        
-
+        preparacion_list = [paso.strip() + '\n' for paso in preparacion.split('\n') if paso.strip()]
+        ingredientes_list = [ingrediente.strip() for ingrediente in self.ingredientes_text.get('1.0', 'end-1c').split(',') if ingrediente.strip()]
         # actualizar los valores en la lista
         with open("recetas.json", 'r') as archivo:
             recetas = json.load(archivo)
@@ -223,9 +242,10 @@ class Editar(ttk.Frame):
                 receta['tiempo_preparacion'] = tiempo_preparacion
                 receta['tiempo_coccion'] = tiempo_coccion
                 receta['fecha_creacion'] = fecha_creacion
-                receta['pasos'] = preparacion
+                receta['pasos'] = preparacion_list
+                receta['ingredientes'] = ingredientes_list
                 # actualizar la imagen si se cambió
-                if self.imagen:
+                if hasattr(self, 'imagen') and self.imagen:
                     #self.values['imagenes'][0] = self.imagen
                     # obtener los nombres de las imágenes
                     #nombre_imagen_vieja = self.values['imagenes'][0]
@@ -317,14 +337,19 @@ class Alta(ttk.Frame):
         ttk.Label(self, text="Tiempo cocción:").grid(row=3, column=1)
         ttk.Entry(self, textvariable=self.tiempo_coccion).grid(row=3, column=2)
         ttk.Label(self, text="Fecha creación:").grid(row=4, column=1)
-        ttk.Entry(self, textvariable=self.fecha_creacion).grid(row=4, column=2)
+        self.fecha_creacion = tk.StringVar()
+        DateEntry(self, textvariable=self.fecha_creacion, date_pattern="dd/MM/yyyy").grid(row=4, column=2)  
+        #ttk.Entry(self, textvariable=self.fecha_creacion).grid(row=4, column=2)
 
-        ttk.Label(self, text="Ingredientes:").grid(row=5, column=1)
-        ttk.Button(self, text="Agregar", command=self.abrir_ventana_ingrediente).grid(row=5, column=2)
-
-        ttk.Label(self, text="Preparación:").grid(row=6, column=1)
+        ttk.Label(self, text="Preparación:").grid(row=5, column=1)
         self.preparacion_text = tk.Text(self, height=5)
-        self.preparacion_text.grid(row=6, column=2)
+        self.preparacion_text.grid(row=5, column=2)
+        
+        ttk.Label(self, text="Ingredientes:").grid(row=6, column=1)
+        #ttk.Button(self, text="Agregar", command=self.abrir_ventana_ingrediente).grid(row=6, column=2)
+        self.ingredientes_text = tk.Text(self, height=5)
+        self.ingredientes_text.grid(row=6, column=2)
+
 
         
         ttk.Label(self, text="Imagen:").grid(row=7, column=1)
@@ -355,15 +380,21 @@ class Alta(ttk.Frame):
         recetas.set_tiempo_coccion(self.tiempo_coccion.get())
         recetas.set_fecha_creacion(self.fecha_creacion.get())
         #recorrer la lista de ingredientes
-        ingredientes = []
-        for ingrediente in self.ingredientes:
-            ingrediente_dict = {"nombre": ingrediente.nombre, "unidad_medida": ingrediente.unidad_de_medida, "cantidad": ingrediente.cantidad}
-            ingredientes.append(ingrediente_dict)
-        recetas.set_ingredientes(ingredientes)
+        # ingredientes = []
+        # for ingrediente in self.ingredientes:
+        #     ingrediente_dict = {"nombre": ingrediente.nombre, "unidad_medida": ingrediente.unidad_de_medida, "cantidad": ingrediente.cantidad}
+        #     ingredientes.append(ingrediente_dict)
+        # recetas.set_ingredientes(ingredientes)
+        # Obtener el contenido del Text para ingredientes
+        ingredientes_str = self.ingredientes_text.get("1.0", "end-1c")
+        # convertir el contenido del Text a una lista de python
+        ingredientes_list = [paso.strip() for paso in ingredientes_str.split(',') if paso.strip()]
+        # almaceno la lista de ingredientes en el objeto receta
+        recetas.set_ingredientes(ingredientes_list)
         # Obtener el contenido del Text
         pasos_str = self.preparacion_text.get("1.0", "end-1c")
         # Convertir el contenido del Text a una lista de python
-        pasos_list = [paso.strip() for paso in pasos_str.split('\n') if paso.strip()]
+        pasos_list = [paso.strip() + '\n' for paso in pasos_str.split('\n') if paso.strip()]
         recetas.set_pasos(pasos_list)
         recetas.set_imagenes(self.imagen)
         
@@ -426,7 +457,9 @@ class Receta:
             except ValueError:
                 recetas = []   
         # Validar que el nombre de la receta sea único
-        self.validar_receta_unica(recetas, self.nombre)
+        if(self.validar_receta_unica(recetas, self.nombre)):
+            return
+        
         
         receta = {}
         receta["nombre"] = self.nombre
